@@ -1,68 +1,85 @@
-from socket import *
-import os 
-import sys
-import random
+import os
+import socket
 import time
+import random
+import argparse
 
-def random_delay():
-    time.sleep(random.uniform(0, 1))
+class TCPServer:
 
-def set_key(key, val):
-    file_path = os.path.join('keys', f'{key}.txt' )
-    with open(file_path, "w") as f:
-        f.write(val)
+    def __init__(self, port_number):
+        self.port_number = port_number
+        self.start_server()
 
-def get_key(key):
-    file_path = os.path.join('keys', f'{key}.txt' )
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            return f.read()
-    else:
-        return None
-
-def process_get_command(key):
-    try:
-        val = get_key(key)
-        size = len(val)
-        return f'VALUE {key} {size}\r\n{val}\r\nEND\r\n'
-    except:
-        return 'NONE\r\nEND\r\n'
-def process_set_command(key, val):
-    try:
-        set_key(key, val)
-        return 'STORED\r\n'
-    except:
-        return 'NOT-STORED\r\n'
-
-def process_command(text_str):
-    random_delay()
-    command_str = text_str.decode('utf-8').strip()
-    command_parts = command_str.split()
-
-    if command_parts[0].lower() == 'get' and len(command_parts) == 2:
-        return process_get_command(command_parts[1])
-    elif command_parts[0].lower() == 'set' and len(command_parts) == 4:
-        return process_set_command(command_parts[1], command_parts[3])
+    def random_delay(self):
+        time.sleep(random.uniform(0, 1))
 
 
-def run_server(serverPort):
-    serverSocket = socket(AF_INET, SOCK_STREAM)
-    serverSocket.bind(('',serverPort))
-    serverSocket.listen(1)
-    while 1:
+    def get(self, key, no_reply=False):
+        file_path = os.path.join('keys', f"{key}.txt")
+        if not os.path.exists(file_path):
+            return "END\r\n"
+        
+        with open(file_path, 'r') as f:
+            data = f.read().split(' ', 1)
+            flags = data[0]
+            value = data[1]
+            value_size = len(value)
+            response = f"VALUE {key} {flags} {value_size}\r\n{value}\r\nEND\r\n"
+        
+        if not no_reply:
+            return response
+
+    def set(self, key, value, flags='', no_reply=False):
+        file_path = os.path.join('keys', f"{key}.txt")
+        with open(file_path, 'w') as f:
+            f.write(f"{flags} {value}")
+
+        if not no_reply:
+            return "STORED\r\n"
+
+    def process_command(self, command_str):
+        self.random_delay()
+        commands = command_str.strip().split()
+        if commands[0].lower() == 'set':
+            key = commands[1]
+            value = commands[2]
+            flags = commands[3]
+            expiration = commands[4]
+            noreply = len(commands) == 6 and commands[5].lower() == 'noreply'
+
+            return self.set(key, value, flags, no_reply=noreply)
+        elif commands[0].lower() == 'get':
+            key = commands[1]
+            return self.get(key)
+        
+        return "ERROR\r\n"
+
+
+    def start_server(self):
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind(('localhost', self.port_number))
+        server_socket.listen(1)
+
         try:
-            connectionSocket, addr = serverSocket.accept()
-            sentence = connectionSocket.recv(1024)
+            while True:
+                connection_socket, addr = server_socket.accept()
+                command = connection_socket.recv(1024).decode('utf-8')
+                
+                if command:
+                    response = self.process_command(command)
+                    connection_socket.send(response.encode('utf-8'))
+                
+                connection_socket.close()
 
-            output = process_command(sentence)
-            connectionSocket.send(output.encode('utf-8'))
-        except:
-            break
-     
-    connectionSocket.close()
-
-
+        except KeyboardInterrupt:
+            print("Server shutting down...")
+        finally:
+            server_socket.close()
 
 if __name__ == '__main__':
+    if not os.path.exists('keys'):
+        os.makedirs('keys') 
 
-    run_server(9889)
+    server = TCPServer(9889)
+ 
