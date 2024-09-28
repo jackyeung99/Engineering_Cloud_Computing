@@ -25,7 +25,7 @@ class TCPServer:
             value = data[1]
             value_size = len(value)
             response = f"VALUE {key} {flags} {value_size}\r\n{value}\r\nEND\r\n"
-        
+   
         if not no_reply:
             return response
 
@@ -36,20 +36,24 @@ class TCPServer:
 
         if not no_reply:
             return "STORED\r\n"
+        else:
+            return True
 
     def process_command(self, command_str):
         self.random_delay()
         commands = command_str.strip().split()
-        if commands[0].lower() == 'set':
-            key = commands[1]
-            value = commands[2]
-            flags = commands[3]
-            expiration = commands[4]
-            noreply = len(commands) == 6 and commands[5].lower() == 'noreply'
 
-            return self.set(key, value, flags, no_reply=noreply)
+        if commands[0].lower() == 'set':
+            print(commands)
+            key = commands[1]
+            flags = commands[2]
+            exptime = commands[3]
+            value_size = int(commands[4])
+            value = commands[5]
+            return self.set(key, value, flags)
         elif commands[0].lower() == 'get':
             key = commands[1]
+            print(key)
             return self.get(key)
         
         return "ERROR\r\n"
@@ -64,16 +68,22 @@ class TCPServer:
         try:
             while True:
                 connection_socket, addr = server_socket.accept()
-                command = connection_socket.recv(1024).decode('utf-8')
-                
-                if command:
+
+                #allow multiple commands from same client
+                while True:  
+                    command = connection_socket.recv(1024).decode('utf-8')
+                    if not command:
+                        break  
+
                     response = self.process_command(command)
                     connection_socket.send(response.encode('utf-8'))
-                
+
                 connection_socket.close()
+          
+                
 
         except KeyboardInterrupt:
-            print("Server shutting down...")
+            print("Shutting Down")
         finally:
             server_socket.close()
 
