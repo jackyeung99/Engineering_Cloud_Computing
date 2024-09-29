@@ -37,10 +37,9 @@ class TCPClient:
 
 
 if __name__ == '__main__':
-    client = TCPClient(9889)
-    set_response = client.send_set_command('test_key', 'test_val')
-    print(f"SET Response: {set_response}")
+    with TCPClient(9889) as client:
+        set_response = client.send_set_command('test_key', 'test_val')
+        print(f"SET Response: {set_response}")
 
-    client = TCPClient(9889) 
-    get_response = client.send_get_command('test_key')
-    print(f"GET Response: {get_response}")
+        get_response = client.send_get_command('test_key')
+        print(f"GET Response: {get_response}")
