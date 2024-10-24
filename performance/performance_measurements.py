@@ -4,8 +4,8 @@ import pandas as pd
 
 
 # from creds import SERVER_IP, BUCKET_NAME
-from ..client import TCPClient
-from ..google_kv import GCPBlobKVStore
+from client import TCPClient
+from google_kv import GCPBlobKVStore
 
 
 
