@@ -48,7 +48,7 @@ def speed_test(client):
 def arrival_rate_test(client):
 
     num_requests = 100
-    arrival_rates = [10, 20, 30, 50, 70, 80, 90, 100, 250]
+    arrival_rates = [1, 10, 20, 30, 50, 70, 80, 90, 100, 250, 1000, 10000]
 
 
     results = []
