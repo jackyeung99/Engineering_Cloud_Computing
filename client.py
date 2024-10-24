@@ -9,7 +9,6 @@ class TCPClient:
         self.host = host
         self.client_socket = None
         
- 
 
     # Using with command to deal with opening and closing of connections
     def __enter__(self):
@@ -20,7 +19,7 @@ class TCPClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.client_socket.close()
 
-    def send_get_command(self, key):
+    def get(self, key):
        
         command = f"get {key}\r\n"
         self.client_socket.sendall(command.encode('utf-8'))
@@ -28,7 +27,7 @@ class TCPClient:
   
         return response
 
-    def send_set_command(self, key, value):
+    def set(self, key, value):
     
         flags = 0 
         exptime = 0 
@@ -46,7 +45,7 @@ if __name__ == '__main__':\
     with TCPClient(9889) as client:
         for n in range(100):
             start_time = time.perf_counter()
-            set_response = client.send_set_command(f'test_key', 'test_val')
+            set_response = client.set(f'test_key', 'test_val')
             processing_time = time.perf_counter() - start_time 
             times.append(processing_time)
             # print(f"SET Response: {set_response}")

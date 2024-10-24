@@ -14,7 +14,7 @@ def speed_test(client):
     start_time = time.time()
     for i in range(1000):
         client.set(f'key{i}', f'value{i}')
-        client.get(f'')
+        client.get(f'key{i}')
     end_time = time.time()
 
     return end_time - start_time
@@ -48,20 +48,21 @@ def arrival_rate_test(client):
 
 if __name__ == '__main__':
         
-    SERVER_IP = input('IP Address:')
-    client = TCPClient((SERVER_IP, 9889))
+    SERVER_IP = input('IP Address: ')
+    client = TCPClient(SERVER_IP, 9889).__enter__()
 
+    # Run arrival rate test
     df = arrival_rate_test(client)
-    df.to_csv('arrival_rate.csv')
-    mem_speed = speed_test(client)
-    print(f"TCP speed: {mem_speed}")
+    df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
+    print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
-    BUCKET_NAME = input('BUCKET:')
-    # Initialize the key-value store
+    # Run speed test for TCP
+    tcp_speed = speed_test(client)
+    print(f"TCP speed test duration: {tcp_speed} seconds")
+    client.__exit__()
+
+    # Initialize the Google KV store and run speed test
+    BUCKET_NAME = input('BUCKET: ')
     kv_store = GCPBlobKVStore(BUCKET_NAME)
-    mem_speed = speed_test(kv_store)
-    print(f"GOOGLE K-V speed: {mem_speed}")
-
-
-
-
+    kv_speed = speed_test(kv_store)
+    print(f"Google KV store speed test duration: {kv_speed} seconds")
