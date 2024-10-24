@@ -74,7 +74,8 @@ def arrival_rate_test(client):
                 num_failed_requests += 1
 
             # Sleep to simulate arrival rate
-            time.sleep(1 / arrival_rate)
+            inter_arrival_time = 1 / arrival_rate
+            time.sleep(inter_arrival_time)
         
 
         successful_requests = num_requests - num_failed_requests
