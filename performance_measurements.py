@@ -12,7 +12,7 @@ from google_kv import GCPBlobKVStore
 
 def speed_test(client):
     start_time = time.time()
-    for i in range(1000):
+    for i in range(100):
         client.set(f'key{i}', f'value{i}')
         client.get(f'key{i}')
     end_time = time.time()
@@ -21,7 +21,7 @@ def speed_test(client):
 
 def arrival_rate_test(client):
 
-    num_requests = 1000
+    num_requests = 100
     arrival_rates = [10, 20, 30, 50, 70, 90] 
 
     results = []
@@ -49,17 +49,17 @@ def arrival_rate_test(client):
 if __name__ == '__main__':
         
     SERVER_IP = input('IP Address: ')
-    client = TCPClient(SERVER_IP, 9889).__enter__()
+    with TCPClient(SERVER_IP, 9889) as client:
 
-    # Run arrival rate test
-    df = arrival_rate_test(client)
-    df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
-    print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
+        # Run arrival rate test
+        df = arrival_rate_test(client)
+        df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
+        print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
-    # Run speed test for TCP
-    tcp_speed = speed_test(client)
-    print(f"TCP speed test duration: {tcp_speed} seconds")
-    client.__exit__()
+        # Run speed test for TCP
+        tcp_speed = speed_test(client)
+        print(f"TCP speed test duration: {tcp_speed} seconds")
+  
 
     # Initialize the Google KV store and run speed test
     BUCKET_NAME = input('BUCKET: ')
