@@ -62,7 +62,7 @@ if __name__ == '__main__':
   
 
     # Initialize the Google KV store and run speed test
-    BUCKET_NAME = input('BUCKET: ')
+    BUCKET_NAME = 'jack-fall2024'
     kv_store = GCPBlobKVStore(BUCKET_NAME)
     kv_speed = speed_test(kv_store)
     print(f"Google KV store speed test duration: {kv_speed} seconds")

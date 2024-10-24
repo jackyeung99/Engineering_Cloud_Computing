@@ -8,25 +8,17 @@ class GCPBlobKVStore:
     def __init__(self, bucket_name):
 
         """
-
         Initialize the GCP Blob Key-Value Store.
-
- 
-
         :param bucket_name: Name of the GCP Cloud Storage bucket.
 
         """
-
         # The client automatically uses the credentials specified by the
-
         # GOOGLE_APPLICATION_CREDENTIALS environment variable.
 
         self.client = storage.Client()
-
         self.bucket = self.client.bucket(bucket_name)
 
         if not self.bucket.exists():
-
             raise ValueError(f"Bucket '{bucket_name}' does not exist.")
 
  
@@ -53,7 +45,7 @@ class GCPBlobKVStore:
 
         blob.upload_from_string(value)
 
-        print(f"Set key: '{key}'")
+        # print(f"Set key: '{key}'")
 
  
 
@@ -101,18 +93,14 @@ class GCPBlobKVStore:
 
         blob.delete()
 
-        print(f"Deleted key: '{key}'")
+        # print(f"Deleted key: '{key}'")
 
  
 
     def exists(self, key):
 
         """
-
         Check if a key exists.
-
- 
-
         :param key: The key (object name).
 
         :return: True if exists, False otherwise.
