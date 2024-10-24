@@ -3,7 +3,7 @@ import random
 import pandas as pd
 
 
-from creds import SERVER_IP, BUCKET_NAME
+# from creds import SERVER_IP, BUCKET_NAME
 from client import TCPClient
 from google_kv import GCPBlobKVStore
 
@@ -48,14 +48,19 @@ def arrival_rate_test(client):
 
 if __name__ == '__main__':
         
+    SERVER_IP = input('IP Address:')
     client = TCPClient((SERVER_IP, 9889))
 
     df = arrival_rate_test(client)
+    df.to_csv('arrival_rate.csv')
     mem_speed = speed_test(client)
+    print(f"TCP speed: {mem_speed}")
 
+    BUCKET_NAME = input('BUCKET:')
     # Initialize the key-value store
     kv_store = GCPBlobKVStore(BUCKET_NAME)
     mem_speed = speed_test(kv_store)
+    print(f"GOOGLE K-V speed: {mem_speed}")
 
 
 
