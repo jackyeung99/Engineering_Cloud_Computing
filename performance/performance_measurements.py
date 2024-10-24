@@ -1,7 +1,11 @@
 import time
 import random 
 import pandas as pd
+import os 
+import sys
 
+repo_root =os.path.abspath(os.path.join(os.getcwd(), '..'))
+sys.path.append(repo_root)
 
 # from creds import SERVER_IP, BUCKET_NAME
 from client import TCPClient
@@ -22,7 +26,7 @@ def speed_test(client):
 def arrival_rate_test(client):
 
     num_requests = 1000
-    arrival_rates = [100, 200, 300, 500, 700, 900] 
+    arrival_rates = [10, 20, 30, 50, 70, 80, 90, 100] 
 
     results = []
     for arrival_rate in arrival_rates:
