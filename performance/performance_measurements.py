@@ -13,6 +13,28 @@ from google_kv import GCPBlobKVStore
 
 
 
+def get_speed(client):
+    get_time = 0.0 
+    for i in range(100):
+        start_time = time.perf_counter()
+        client.set(f"key{i}", f"value{i}")
+        end_time = start_time - time.perf_counter()
+
+        get_time += end_time
+
+    return get_time/100
+
+def set_speed(client):
+    get_time = 0.0 
+    for i in range(100):
+        start_time = time.perf_counter()
+        client.get(f"key{i}")
+        end_time = start_time - time.perf_counter()
+
+        get_time += end_time
+
+    return get_time/100
+
 
 def speed_test(client):
     start_time = time.time()
@@ -26,7 +48,7 @@ def speed_test(client):
 def arrival_rate_test(client):
 
     num_requests = 100
-    arrival_rates = [10, 20, 30, 50, 70, 80, 90, 100] 
+    arrival_rates = [10, 20, 30, 50, 70, 80, 90, 100, 250,] 
 
     results = []
     for arrival_rate in arrival_rates:
@@ -60,6 +82,12 @@ if __name__ == '__main__':
         print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
         # Run speed test for TCP
+        set = set_speed(client)
+        print(f"TCP set speed {set}")
+
+        get = get_speed(client)
+        print(f"TCP get speed {get}")
+
         tcp_speed = speed_test(client)
         print(f"TCP speed test duration: {tcp_speed} seconds")
   
@@ -68,7 +96,11 @@ if __name__ == '__main__':
     BUCKET_NAME = 'jack-fall2024'
     kv_store = GCPBlobKVStore(BUCKET_NAME)
     
-    df = arrival_rate_test(kv_store)
-    df.to_csv('arrival_rate_google.csv', index=False)
+    set = set_speed(kv_store)
+    print(f"Google KV set speed {set}")
+
+    get = get_speed(kv_store)
+    print(f"Google KV get speed {get}")
+
     kv_speed = speed_test(kv_store)
     print(f"Google KV store speed test duration: {kv_speed} seconds")
