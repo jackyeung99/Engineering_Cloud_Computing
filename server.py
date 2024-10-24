@@ -17,7 +17,7 @@ class TCPServer:
 
 
     def get(self, key, no_reply=False):
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         file_path = os.path.join('keys', f"{key}.txt")
         if not os.path.exists(file_path):
             return "END\r\n"
@@ -29,21 +29,21 @@ class TCPServer:
             value_size = len(value)
             response = f"VALUE {key} {flags} {value_size}\r\n{value}\r\nEND\r\n"
 
-        processing_time = time.perf_counter() - start_time 
-        print(f"Server Latency for GET operation: {processing_time * 1000:.4f} ms")  
+        # processing_time = time.perf_counter() - start_time 
+        # print(f"Server Latency for GET operation: {processing_time * 1000:.4f} ms")  
 
         if not no_reply:
             return response
 
     def set(self, key, value, flags='', no_reply=False):
 
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         file_path = os.path.join('keys', f"{key}.txt")
         with open(file_path, 'w') as f:
             f.write(f"{flags} {value}")
 
-        processing_time = time.perf_counter() - start_time 
-        print(f"Server Latency for SET operation: {processing_time * 1000:.4f} ms")  
+        # processing_time = time.perf_counter() - start_time 
+        # print(f"Server Latency for SET operation: {processing_time * 1000:.4f} ms")  
         if not no_reply:
             return "STORED\r\n"
         else:
