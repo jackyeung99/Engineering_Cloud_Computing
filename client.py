@@ -1,16 +1,20 @@
 import socket
+import time
+import numpy as np 
 
 class TCPClient:
 
-    def __init__(self, serverPort):
+    def __init__(self, host,  serverPort):
         self.serverPort = serverPort
+        self.host = host
         self.client_socket = None
+        
  
 
     # Using with command to deal with opening and closing of connections
     def __enter__(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket.connect(('localhost', self.serverPort))
+        self.client_socket.connect((self.host, self.serverPort))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -36,10 +40,23 @@ class TCPClient:
         return response
 
 
-if __name__ == '__main__':
-    with TCPClient(9889) as client:
-        set_response = client.send_set_command('test_key', 'test_val')
-        print(f"SET Response: {set_response}")
+if __name__ == '__main__':\
 
-        get_response = client.send_get_command('test_key')
-        print(f"GET Response: {get_response}")
+    times = []
+    with TCPClient(9889) as client:
+        for n in range(100):
+            start_time = time.perf_counter()
+            set_response = client.send_set_command(f'test_key', 'test_val')
+            processing_time = time.perf_counter() - start_time 
+            times.append(processing_time)
+            # print(f"SET Response: {set_response}")
+
+        # get_response = client.send_get_command('test_key')
+        # print(f"GET Response: {get_response}")
+
+    print(np.mean(times) * 1000)
+    
+
+
+
+  
