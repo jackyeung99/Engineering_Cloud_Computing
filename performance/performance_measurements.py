@@ -29,11 +29,10 @@ def arrival_rate_test(client):
         total_response_time = 0
         
         for i in range(num_requests):
-            start_time = time.time()
-            
+            start_time = time.perf_counter()
             client.set(f'key{i}', f'value{i}')
-            
-            end_time = time.time()
+            client.get(f'key{i}')
+            end_time = time.perf_counter()
             response_time = end_time - start_time
             total_response_time += response_time
             
@@ -64,5 +63,8 @@ if __name__ == '__main__':
     # Initialize the Google KV store and run speed test
     BUCKET_NAME = 'jack-fall2024'
     kv_store = GCPBlobKVStore(BUCKET_NAME)
+    
+    df = arrival_rate_test(kv_store)
+    df.to_csv('arrival_rate_google.csv', index=False)
     kv_speed = speed_test(kv_store)
     print(f"Google KV store speed test duration: {kv_speed} seconds")
