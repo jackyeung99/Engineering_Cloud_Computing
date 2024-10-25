@@ -143,34 +143,33 @@ if __name__ == '__main__':
     df.to_csv('data/concurrency_result.csv')
 
 
-
-    # with TCPClient(SERVER_IP, 9889) as client:
+    with TCPClient(SERVER_IP, 9889) as client:
 
         # Run arrival rate test
-        # df = arrival_rate_test(SERVER_IP)
-        # df.to_csv('data/arrival_rate.csv', index=False) 
-        # print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
+        df = arrival_rate_test(SERVER_IP)
+        df.to_csv('data/arrival_rate.csv', index=False) 
+        print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
-        # # Run speed test for TCP
-        # set = set_speed(client)
-        # print(f"TCP set speed {set}")
+        # Run speed test for TCP
+        set = set_speed(client)
+        print(f"TCP set speed {set}")
 
-        # get = get_speed(client)
-        # print(f"TCP get speed {get}")
+        get = get_speed(client)
+        print(f"TCP get speed {get}")
 
-        # tcp_speed = speed_test(client)
-        # print(f"TCP speed test duration: {tcp_speed} seconds")
+        tcp_speed = speed_test(client)
+        print(f"TCP speed test duration: {tcp_speed} seconds")
   
 
-    # # Initialize the Google KV store and run speed test
-    # BUCKET_NAME = 'jack-fall2024'
-    # kv_store = GCPBlobKVStore(BUCKET_NAME)
+    # Initialize the Google KV store and run speed test
+    BUCKET_NAME = 'jack-fall2024'
+    kv_store = GCPBlobKVStore(BUCKET_NAME)
     
-    # set = set_speed(kv_store)
-    # print(f"Google KV set speed {set}")
+    set = set_speed(kv_store)
+    print(f"Google KV set speed {set}")
 
-    # get = get_speed(kv_store)
-    # print(f"Google KV get speed {get}")
+    get = get_speed(kv_store)
+    print(f"Google KV get speed {get}")
 
-    # kv_speed = speed_test(kv_store)
-    # print(f"Google KV store speed test duration: {kv_speed} seconds")
+    kv_speed = speed_test(kv_store)
+    print(f"Google KV store speed test duration: {kv_speed} seconds")
