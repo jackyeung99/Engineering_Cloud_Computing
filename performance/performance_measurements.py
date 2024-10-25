@@ -135,7 +135,7 @@ def measure_concurrency(server_ip, num_requests):
     return pd.DataFrame(result)
 
 if __name__ == '__main__':
-        
+    os.makedirs('data', exist_ok=True)
     SERVER_IP = input('IP Address: ') 
 
 
