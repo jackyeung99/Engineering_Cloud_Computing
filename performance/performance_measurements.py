@@ -131,7 +131,7 @@ def measure_rps(client, server_ip, num_requests, num_threads):
 if __name__ == '__main__':
         
     SERVER_IP = input('IP Address: ') 
-    concurrency_levels = [1, 10, 50, 100, 200]  # Change as needed
+    concurrency_levels = [1, 5, 10, 15, 20]  # Change as needed
     NUM_REQUESTS = 100
     for num_threads in concurrency_levels:
         rps, time_taken = measure_rps(TCPClient, SERVER_IP, NUM_REQUESTS, num_threads)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
 
 
-        
+
     # with TCPClient(SERVER_IP, 9889) as client:
 
         # Run arrival rate test
