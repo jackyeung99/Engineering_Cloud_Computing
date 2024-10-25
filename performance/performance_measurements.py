@@ -106,37 +106,41 @@ def send_request(client, server_ip, i):
         print(f"Error: {e}")
         return None
 
-# Function to measure the requests per second
+
 def measure_rps(client, server_ip, num_requests, num_threads):
     # Start time
     start_time = time.time()
-    
-    # Use ThreadPoolExecutor to send requests in parallel
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(send_request, client, server_ip, i) for i in range(num_requests)]
         
-        # Wait for all threads to complete
         for future in futures:
             future.result()
-    
-    # End time
+
     end_time = time.time()
-    
-    # Calculate time taken and RPS
     time_taken = end_time - start_time
     rps = num_requests / time_taken if time_taken > 0 else 0
     return rps, time_taken
 
+def measure_concurrency(server_ip, num_requests):
+    result = []
+    concurrency_levels = range(2,26,2)
+    for num_threads in concurrency_levels:
+        rps, time_taken = measure_rps(TCPClient, server_ip, num_requests, num_threads)
+
+        result.append({'num_threads':num_threads, 
+                      'requests_per_s_handled': rps,
+                      'time_take': time_taken
+                      })
+       
+    return pd.DataFrame(result)
 
 if __name__ == '__main__':
         
     SERVER_IP = input('IP Address: ') 
-    concurrency_levels = [1, 5, 10, 15, 20]  # Change as needed
-    NUM_REQUESTS = 100
-    for num_threads in concurrency_levels:
-        rps, time_taken = measure_rps(TCPClient, SERVER_IP, NUM_REQUESTS, num_threads)
-        print(f"Concurrency: {num_threads}, Requests per second: {rps:.2f}, Time taken: {time_taken:.2f} seconds")
 
+
+    df = measure_concurrency(SERVER_IP, 100)
+    df.to_csv('data/concurrency_result.csv')
 
 
 
@@ -144,7 +148,7 @@ if __name__ == '__main__':
 
         # Run arrival rate test
         # df = arrival_rate_test(SERVER_IP)
-        # df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
+        # df.to_csv('data/arrival_rate.csv', index=False) 
         # print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
         # # Run speed test for TCP
