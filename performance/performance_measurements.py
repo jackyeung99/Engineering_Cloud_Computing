@@ -45,7 +45,7 @@ def speed_test(client):
 
     return end_time - start_time
 
-def arrival_rate_test(client):
+def arrival_rate_test(server_ip):
 
     num_requests = 500
     arrival_rates = [10, 20, 30, 50, 70, 80, 90, 100, 250, 1000]
@@ -62,8 +62,10 @@ def arrival_rate_test(client):
             try:
         
                 start_time = time.perf_counter()
-                client.set(f'key{i}', f'value{i}')
-                client.get(f'key{i}')
+                with TCPClient(server_ip, 9889) as client:
+                    client.set(f'key{i}', f'value{i}')
+                    client.get(f'key{i}')
+
                 end_time = time.perf_counter()
                 
                 response_time = end_time - start_time
@@ -95,33 +97,33 @@ def arrival_rate_test(client):
 if __name__ == '__main__':
         
     SERVER_IP = input('IP Address: ')
-    with TCPClient(SERVER_IP, 9889) as client:
+    # with TCPClient(SERVER_IP, 9889) as client:
 
-        # Run arrival rate test
-        df = arrival_rate_test(client)
-        df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
-        print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
+    # Run arrival rate test
+    df = arrival_rate_test(SERVER_IP)
+    df.to_csv('arrival_rate.csv', index=False)  # Save results to CSV
+    print(f"Arrival rate test results saved to 'arrival_rate.csv'.")
 
-        # Run speed test for TCP
-        set = set_speed(client)
-        print(f"TCP set speed {set}")
+    # # Run speed test for TCP
+    # set = set_speed(client)
+    # print(f"TCP set speed {set}")
 
-        get = get_speed(client)
-        print(f"TCP get speed {get}")
+    # get = get_speed(client)
+    # print(f"TCP get speed {get}")
 
-        tcp_speed = speed_test(client)
-        print(f"TCP speed test duration: {tcp_speed} seconds")
+    # tcp_speed = speed_test(client)
+    # print(f"TCP speed test duration: {tcp_speed} seconds")
   
 
-    # Initialize the Google KV store and run speed test
-    BUCKET_NAME = 'jack-fall2024'
-    kv_store = GCPBlobKVStore(BUCKET_NAME)
+    # # Initialize the Google KV store and run speed test
+    # BUCKET_NAME = 'jack-fall2024'
+    # kv_store = GCPBlobKVStore(BUCKET_NAME)
     
-    set = set_speed(kv_store)
-    print(f"Google KV set speed {set}")
+    # set = set_speed(kv_store)
+    # print(f"Google KV set speed {set}")
 
-    get = get_speed(kv_store)
-    print(f"Google KV get speed {get}")
+    # get = get_speed(kv_store)
+    # print(f"Google KV get speed {get}")
 
-    kv_speed = speed_test(kv_store)
-    print(f"Google KV store speed test duration: {kv_speed} seconds")
+    # kv_speed = speed_test(kv_store)
+    # print(f"Google KV store speed test duration: {kv_speed} seconds")
