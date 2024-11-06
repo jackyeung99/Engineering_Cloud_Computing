@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     # Initialize the key-value store
     kv_store = GCPBlobKVStore(bucket_name)
-
+ 
     # Set a key-value pair
     kv_store.set("example_key", "This is a sample value.")
 
@@ -130,7 +130,6 @@ if __name__ == "__main__":
     value = kv_store.get("example_key")
     if value:
         print(f"Retrieved value: {value.decode('utf-8')}")
-
 
     # Check if the key exists
     if kv_store.exists("example_key"):

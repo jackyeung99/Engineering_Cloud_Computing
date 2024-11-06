@@ -9,8 +9,8 @@ import sys
 repo_root = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(repo_root)
 
-from server import TCPServer
-from client import TCPClient
+from Assignment01.server import TCPServer
+from Assignment01.client import TCPClient
 
 @pytest.fixture(scope="session", autouse=True)
 def start_server():

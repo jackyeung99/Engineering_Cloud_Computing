@@ -9,8 +9,8 @@ repo_root =os.path.abspath(os.path.join(os.getcwd(), '..'))
 sys.path.append(repo_root)
 
 # from creds import SERVER_IP, BUCKET_NAME
-from client import TCPClient
-from google_kv import GCPBlobKVStore
+from Assignment01.client import TCPClient
+from Assignment02.google_kv import GCPBlobKVStore
 
 
 
