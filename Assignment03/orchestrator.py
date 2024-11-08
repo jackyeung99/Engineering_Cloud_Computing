@@ -1,163 +1,124 @@
-
-
-import numpy as np
-import requests
 from google.cloud import storage
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import io 
-
-import sys
-sys.path.append("..")
-
-from creds import MAPPER_URL, REDUCER_URL
-
+from time import perf_counter
+import numpy as np
+import asyncio
+import aiohttp
+import tempfile
 
 class Orchestrator():
-    def __init__(self, matrix_A, matrix_B, dim_A, dim_B, block_size, mapper_url, reducer_url, bucket_name):
+    def __init__(self, matrix_A, matrix_B, block_size, mapper_url, reducer_url, bucket_name):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
-        self.dim_A = dim_A
-        self.dim_B = dim_B
+        self.dim_A = self.matrix_A.shape
+        self.dim_B = self.matrix_B.shape
         self.block_size = block_size
-        self.bucket_name = bucket_name
         self.MAPPER_URL = mapper_url
         self.REDUCER_URL = reducer_url
+        self.bucket_name = bucket_name
+
 
     @staticmethod
-    def retrieve_row_chunks(matrix_dim, block_size):
-        rows, cols = matrix_dim
+    def retrieve_elems(matrix):
         blocks = [
             (i, j)
-            for i in range(rows)
-            for j in range(0, cols, block_size)
+            for i in range(len(matrix))
+            for j in range(len(matrix[i]))
         ]
         return blocks
 
-    def trigger_map_function(self, a_position, b_position, id):
-        i, j = a_position
-        start_col, end_col = b_position
+    async def trigger_map_function(self, session, a_chunk, b_chunk, i, j, start_chunk, end_chunk):
         payload = {
-            "bucket_name": self.bucket_name,
-            "matrix_a": self.matrix_A,
-            "matrix_b": self.matrix_B,
-            "a_position": (i, j),
-            "b_position": (start_col, end_col),
-            "id": id
+            "matrix_a_chunk": a_chunk.tolist(),
+            "matrix_b_chunk": b_chunk.tolist(),
         }
-
-        response = requests.post(self.MAPPER_URL, json=payload)
-        return response.status_code, response.text
-
-        # return payload  
-
-
-    def trigger_reduce_function(self, i, col_start, col_end, files):
-        payload = {
-            "bucket_name": self.bucket_name,
-            "files": files,
-            "i": i,
-            "j": col_start,
-            "j_end": col_end
-
-        }
-        # Send a request to the reducer
-        response = requests.post(self.REDUCER_URL, json=payload)
-        return response.status_code, response.text
-    
-        # return payload  
-
-    def group_files(self, results):
-        grouped = {}
-        for file in results:
-            i, j, j_end, id = file.replace('.npy', '').replace('Map/', '').split('_')
-            
-            if (i,j, j_end) in grouped:
-                grouped[(i,j, j_end)].append(file)
+        async with session.post(self.MAPPER_URL, json=payload) as response:
+            if response.status == 200:
+                return ((i, start_chunk, end_chunk), np.array(await response.json()))
             else:
-                grouped[(i,j, j_end)] = [file]
+                raise Exception(f"Map function failed: {response.status}, {await response.text()}")
 
-        return grouped
-    
-    def reconstruct_matrix(self, reduce_results):
+    async def trigger_reduce_function(self, session, partial_results, i, start_chunk, end_chunk):
+        payload = {
+            "partial_results": [result.tolist() for result in partial_results]
+        }
+        async with session.post(self.REDUCER_URL, json=payload) as response:
+            if response.status == 200:
+                return ((i, start_chunk, end_chunk), np.array(await response.json()))
+            else:
+                raise Exception(f"Reduce function failed: {response.status}, {await response.text()}")
 
-        client = storage.Client()
-        bucket = client.bucket(self.bucket_name)
-        reconstructed_matrix = np.zeros((self.dim_A[0], self.dim_B[1])) 
+    async def mapper(self):
+        partial_results = []
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for a_row, a_col in self.retrieve_elems(self.matrix_A):
+                for col_block_start, col_block_end in [(j, min(j + self.block_size, self.dim_B[0])) for j in range(0, self.dim_B[0], self.block_size)]:
+                    a_chunk = self.matrix_A[a_row, a_col]
+                    b_chunk = self.matrix_B[a_col, col_block_start:col_block_end]
+                    tasks.append(self.trigger_map_function(session, a_chunk, b_chunk, a_row, a_col, col_block_start, col_block_end))
 
-        for file_path in reduce_results:
-            file_name = file_path.split('/')[-1]  
-    
-            i, j, j_end = map(int, file_name.replace('.npy', '').split('_'))
-            
-            # Load the partial matrix chunk from storage
-            blob = bucket.blob(file_path)
-            matrix_bytes = blob.download_as_bytes()
-            partial_chunk = np.load(io.BytesIO(matrix_bytes))
-            # Place the partial result in the reconstructed matrix
-            reconstructed_matrix[i, j:j_end] = partial_chunk
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    print(f"Map task failed: {result}")
+                else:
+                    partial_results.append(result)
+
+        return partial_results
+
+    async def reducer(self, grouped_results):
+        final_results = {}
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for (i, col_block_start, col_block_end), group in grouped_results.items():
+                tasks.append(self.trigger_reduce_function(session, group, i, col_block_start, col_block_end))
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    print(f"Reduce task failed: {result}")
+                else:
+                    (i, col_block_start, col_block_end), chunk = result
+                    final_results[(i, col_block_start, col_block_end)] = chunk
+
+        return final_results
+
+    def grouper(self, partial_results):
+        grouped_results = {}
+        for (i, col_block_start, col_block_end), result in partial_results:
+            if (i, col_block_start, col_block_end) not in grouped_results:
+                grouped_results[(i, col_block_start, col_block_end)] = []
+            grouped_results[(i, col_block_start, col_block_end)].append(result)
+
+        return grouped_results
+
+    def reconstruct(self, final_results):
+        reconstructed_matrix = np.zeros((self.dim_A[0], self.dim_B[1]))
+        for (i, j_start, j_end), chunk in final_results.items():
+            reconstructed_matrix[i, j_start:j_end] = chunk
 
         return reconstructed_matrix
 
-    # def orchestrate_matrix_multiplication(self):
-    #     results = []
-    #     counter = 0
+    async def orchestrate_matrix_multiplication(self):
 
-    #     for a_row, a_col in self.retrieve_row_chunks(self.dim_A, 1):
-    #         for col_block_start, col_block_end in [(j, min(j + self.block_size, self.dim_B[1])) for j in range(0, self.dim_B[1], self.block_size)]:
+        time = perf_counter()
+        partial_results = await self.mapper()
+        map = perf_counter() - time
 
-    #             a_block, b_block = (a_row, a_col), (col_block_start, col_block_end)
-    #             payload = self.trigger_map_function(a_block, b_block, counter)
-    #             results.append(f"Map/{a_row}_{col_block_start}_{col_block_end}_{counter}.npy") 
-    #             counter += 1
+        grouped = self.grouper(partial_results)
 
-    #     reduce_results = []
-   
-    #     for (i, j, j_end), files in self.group_files(results).items():
-    #         payload = self.trigger_reduce_function(i, j, j_end, files)
-    #         # self.reduce_function(payload)
-    #         reduce_results.append(f"Reduce/{i}_{j}_{j_end}.npy")
+        time = perf_counter()
+        final_results = await self.reducer(grouped)
+        reduce = perf_counter() - time
 
+        reconstructed = self.reconstruct(final_results)
+        return reconstructed, map, reduce
+    
+    def save_to_bucket(self, matrix, destination_blob_name):
+        client = storage.Client()
+        bucket = client.bucket(self.bucket_name)
+        blob = bucket.blob(destination_blob_name)
 
-    #     return self.reconstruct_matrix(reduce_results)
-  
-    def orchestrate_matrix_multiplication(self):
-        results = []
-        counter = 0
-
-        # Create a ThreadPoolExecutor for parallel execution of map tasks
-        with ProcessPoolExecutor(max_workers=50) as executor:
-            map_futures = []
-            for a_row, a_col in self.retrieve_row_chunks(self.dim_A, 1):
-                for col_block_start, col_block_end in [(j, min(j + self.block_size, self.dim_B[1])) for j in range(0, self.dim_B[1], self.block_size)]:
-                    a_block, b_block = (a_row, a_col), (col_block_start, col_block_end)
-
-                    # Submit the trigger_map_function call
-                    map_futures.append(executor.submit(self.trigger_map_function, a_block, b_block, counter))
-                    results.append(f"Map/{a_row}_{col_block_start}_{col_block_end}_{counter}.npy")
-                    counter += 1
-
-            # Wait for all map tasks to complete
-            for future in as_completed(map_futures):
-                try:
-                    result = future.result()  # This will raise any exceptions that occurred
-                except Exception as e:
-                    print(f"Map task failed: {e}")
-
-        reduce_results = []
-
-        # Create a ThreadPoolExecutor for parallel execution of reduce tasks
-        with ProcessPoolExecutor(max_workers=50) as executor:
-            reduce_futures = []
-            for (i, j, j_end), files in self.group_files(results).items():
-                # Submit the cloud function call for reduce tasks
-                reduce_futures.append(executor.submit(self.trigger_reduce_function, i, j, j_end, files))
-                reduce_results.append(f"Reduce/{i}_{j}_{j_end}.npy")
-
-            # Wait for all reduce tasks to complete
-            for future in as_completed(reduce_futures):
-                try:
-                    result = future.result()  # This will raise any exceptions that occurred
-                except Exception as e:
-                    print(f"Reduce task failed: {e}")
-
-        return self.reconstruct_matrix(reduce_results)
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            np.save(tmpfile.name, matrix)
+            blob.upload_from_filename(tmpfile.name)
