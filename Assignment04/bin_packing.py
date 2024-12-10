@@ -2,31 +2,12 @@ import argparse
 import pandas as pd
 import sqlite3
 import sys
+import numpy as np
 
-class Server:
-    def __init__(self, cores, memory, ssd, nic):
-        self.vm_list = []
-        self.cores = cores
-        self.memory = memory 
-        self.ssd = ssd 
-        self.nic = nic
+from methods.cosine import cosine_similarity_method
+from methods.ff import ff_method
+from methods.harmonic import harmonic_method, get_partitions
 
-    def add_vm(self, vm):
-        self.vm_list.append(vm)
-        self.cores -= vm['cores']
-        self.memory -= vm['memory']
-        self.ssd -= vm['ssd']
-        self.nic -= vm['nic']
-
-    def get_server_info(self):
-        return self.cores, self.memory, self.ssd, self.nic
-    
-    def display_server_info(self):
-        print(f"""SERVER CAPACITY:
-        CORES: {self.cores}
-        MEMORY: {self.memory}
-        SSD: {self.ssd}
-        NIC: {self.nic}""")
 
 def save_vm_data():
     c = sqlite3.connect('Data/packing_trace_zone_a_v1.sqlite')
@@ -56,33 +37,18 @@ def save_vm_data():
     # df = df.drop_duplicates(subset=['vmTypeId'], keep='first')
     df.to_csv('Data/vm_info.csv')
 
-# packing methods
-def cosine(vm):
-    pass
-
-def ffd(vm):
-    pass
-
 
 # Server assignment 
-def assign_vms(vm_info, policy='cosine'):
-    server_counter = 0
-    server = Server()
+def assign_vms(df, policy, random_sample):
+    M = None
+    if policy == 'cosine':
+        M = cosine_similarity_method(df)
+    elif policy == 'ff':
+        M = ff_method(df)    
+    elif policy == 'harmonic':
+        M = harmonic_method(df, random_sample)
 
-    # simulate discrete structure where you see each vm one at a time 
-    for vm in vm_info.sort_values(by=['starttime']).iterrows():
-
-        if policy == 'cosine':
-            cosine(vm)
-        elif policy == 'ffd':
-            ffd(vm)
-
-        print(vm)
-        break
-
-    return server_counter
-
-
+    return M
 
 
 def main():
@@ -93,10 +59,15 @@ def main():
  
     policy = args.policy
     num_vms = args.numvms
-
+    
     # save_vm_data()
-    df = pd.read_csv('Data/vm_info.csv')[:num_vms]
-    M = assign_vms(df, policy)
+
+    df = pd.read_csv('Data/vm_info.csv').sort_values(by=['starttime'])
+    # random_sample = df.sample(10000)
+    random_sample = df[:10000]
+    df = df[:num_vms]
+    M = assign_vms(df, policy, random_sample)
+    print(f"Policy: {policy}")
     print(f"NUMBER OF SERVERS REQUIRED: {M}")
 
 
