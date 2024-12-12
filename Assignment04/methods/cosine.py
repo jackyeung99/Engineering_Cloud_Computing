@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from server_class import Server
+import random
 
 def cosine(VM, Servers):
-    vm_vec = np.array([v for k, v in VM.items() if k in ['core', 'memory', 'ssd', 'nic']]).reshape(1, -1)
+    vm_vec = np.array([VM[k] for k in ['core', 'memory', 'ssd', 'nic']]).reshape(1, -1)
 
     server_vecs = np.vstack([server.get_server_info(reshape=True) for server in Servers])
     similarities = cosine_similarity(vm_vec, server_vecs).flatten()

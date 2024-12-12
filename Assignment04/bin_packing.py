@@ -6,7 +6,8 @@ import numpy as np
 
 from methods.cosine import cosine_similarity_method
 from methods.ff import ff_method
-from methods.harmonic import harmonic_method, get_partitions
+from methods.harmonic import harmonic_method
+from methods.cluster import ClusteringFF_method
 
 
 def save_vm_data():
@@ -46,9 +47,33 @@ def assign_vms(df, policy, random_sample):
     elif policy == 'ff':
         M = ff_method(df)    
     elif policy == 'harmonic':
-        M = harmonic_method(df, random_sample)
+        M = harmonic_method(df)
+    elif policy == 'clustering':
+        M = ClusteringFF_method(df, random_sample)
+
+    elif policy == 'all':
+        print(f"Cosine: {cosine_similarity_method(df)}")
+        print(f"Fit First: {ff_method(df)}")
+        print(f"Harmonic: {harmonic_method(df)}")
+        print(f"Clustering: {ClusteringFF_method(df, random_sample)}")
 
     return M
+
+def test_perfomance(df, random_sample):
+    data = []
+    test_range = range(2500, 25000, 2500)
+    for i in test_range:
+        print(i)
+        subset = df[:i]
+        data.append({'num_vms': i,
+                    'Cosine':cosine_similarity_method(subset),
+                     'ff': ff_method(subset),
+                     'Harmonic': harmonic_method(subset),
+                     'Clustering': ClusteringFF_method(subset, random_sample)
+                    })
+
+    results = pd.DataFrame(data)
+    results.to_csv('results.csv')
 
 
 def main():
@@ -63,12 +88,16 @@ def main():
     # save_vm_data()
 
     df = pd.read_csv('Data/vm_info.csv').sort_values(by=['starttime'])
-    # random_sample = df.sample(10000)
-    random_sample = df[:10000]
+    # simulate 80% train 20% test
+    random_sample = df.sample(num_vms*4)
+
+    test_perfomance(df, random_sample)
+    
     df = df[:num_vms]
     M = assign_vms(df, policy, random_sample)
     print(f"Policy: {policy}")
     print(f"NUMBER OF SERVERS REQUIRED: {M}")
+
 
 
 

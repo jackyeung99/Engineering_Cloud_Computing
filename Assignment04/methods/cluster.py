@@ -1,40 +1,33 @@
 from server_class import Server
 import numpy as np 
-from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
-class OnlineHarmonic4D:
-    def __init__(self):
-        self.bins = {}    
-        self.gen_thresholds(K=5)
-    
-    def gen_thresholds(self, K):
-        self.i_thresh = [('i_1', 59/96, 1), ('i_a', 1/2, 59/96), ('i_2', 37/96, 1/2), ('i_b', 1/3, 37/96)]
-        self.i_thresh.extend([(f'i_{x}', 1/(x+1), 1/x) for x in range(3,K-1)])
-        self.i_thresh.append(('i_k', 0, 1/K))
-        self.i_thresh[::-1]
-   
-        
+class clusteringFF:
+    def __init__(self, df):
+        self.bins = {}
+        self.thresholds = self.clustering_based_thresholds(df)
+
+
+
+    def clustering_based_thresholds(self, training, n_clusters=8):
+        df = training[['core', 'memory', 'ssd', 'nic']]
+        kmeans = KMeans(n_clusters=n_clusters)
+        kmeans.fit(df)
+        thresholds = {i: np.max(cluster, axis=0) for i, cluster in enumerate(kmeans.cluster_centers_)}
+        return thresholds
+            
+
     def partition(self, VM):
         vm_vec = np.array([VM[k] for k in ['core', 'memory', 'ssd', 'nic']])
-        bin_assignment = []
-        for i in vm_vec:
-            for name, lower,upper in self.i_thresh: 
-                if lower <= i < upper:
-                    bin_assignment.append(name)
-
-        return tuple(bin_assignment)
-    
-    # def partition(self, VM):
-    #     vm_vec = np.array([VM[k] for k in ['core', 'memory', 'ssd', 'nic']])
-    #     avg_val = np.average(vm_vec)
-        
-    #     for name, lower,upper in self.i_thresh: 
-    #         if lower <= avg_val < upper:
-    #             return name
+        distances = {
+            cluster_id: np.linalg.norm(vm_vec - center)
+            for cluster_id, center in self.thresholds.items()
+        }
+        best_cluster = min(distances, key=distances.get)
+        return best_cluster
     
 
     def add_item(self, VM):
-    
         subregion = self.partition(VM)
 
         if subregion not in self.bins:
@@ -56,10 +49,10 @@ class OnlineHarmonic4D:
         return sum(len(bins) for bins in self.bins.values())
     
 
-def harmonic_method(df):
+def ClusteringFF_method(df, random_sample):
     # undert the assumptiobn you have previous data from training 
     # calculate thresholds for harmonic methods based off simulated training data
-    harmonic_bins = OnlineHarmonic4D()
+    harmonic_bins = clusteringFF(random_sample)
     # simulate discrete structure where you see each vm one at a time 
     for _, vm in df.iterrows():
         vm = vm.to_dict()
